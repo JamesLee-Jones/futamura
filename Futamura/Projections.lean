@@ -25,21 +25,21 @@ structure Compiler {I O : Type} (S T : Lang) where
   correct: ∀ (p : S.Prog I O) (x : I), S.eval p x = T.eval (T.eval prog p) x
 
 /-- A specializer (partial evaluator) for `T`: a `T`-program that takes a program expecting a static-dynamic pair and a static input, and produces a residual program over just the dynamic input. -/
-structure Mix {St Dy O : Type} (T : Lang) where
-  /-- The partial evaluator program. -/
-  prog: T.Prog ((T.Prog (St × Dy) O) × St) (T.Prog Dy O)
-  /-- The residual program is equivalent to the original with the static input fixed. -/
-  correct: ∀ (p : T.Prog (St × Dy) O) (s : St) (x : Dy),
+structure Mix (T : Lang) where
+  /-- The partial evaluator program, polymorphic over instantiation. -/
+  prog: {St Dy O : Type} → T.Prog ((T.Prog (St × Dy) O) × St) (T.Prog Dy O)
+  /-- The residual program is equivalent to the original with the static input fixed at all instantiations. -/
+  correct: ∀ {St Dy O : Type} (p : T.Prog (St × Dy) O) (s : St) (x : Dy),
     T.eval p (s, x) = T.eval (T.eval prog (p, s)) x
 
 /-- First Futamura projection: specializing an interpreter to a program yields a compiled program. -/
 def projection1 {I O : Type}
-    (S T : Lang) (mix : @Mix (S.Prog I O) I O T) (interp : @Interp I O S T) (p : S.Prog I O) : T.Prog I O :=
+    (S T : Lang) (mix : Mix T) (interp : @Interp I O S T) (p : S.Prog I O) : T.Prog I O :=
   T.eval mix.prog (interp.prog, p)
 
 /-- The compiled program behaves the same as the source program. -/
 theorem projection1_correct {I O : Type}
-    (S T : Lang) (mix : @Mix (S.Prog I O) I O T)
+    (S T : Lang) (mix : Mix T)
     (interp : @Interp I O S T) (p : S.Prog I O)
     (x : I) :
     S.eval p x = T.eval (projection1 S T mix interp p) x := by
@@ -50,12 +50,11 @@ theorem projection1_correct {I O : Type}
 /-- Second Futamura projection: specializing `mix` to an interpreter yields a compiler. -/
 def projection2 {I O : Type}
     (S T : Lang)
-    (mix_1 : @Mix (S.Prog I O) I O T)
-    (mix_2 : @Mix (T.Prog (S.Prog I O × I) O) (S.Prog I O) (T.Prog I O) T)
+    (mix : Mix T)
     (interp : @Interp I O S T) : @Compiler I O S T where
-  prog := T.eval mix_2.prog (mix_1.prog, interp.prog)
+  prog := T.eval mix.prog (mix.prog, interp.prog)
   correct := by
     intro p x
-    rw [← mix_2.correct]
-    rw [← mix_1.correct]
+    rw [← mix.correct]
+    rw [← mix.correct]
     rw [← Interp.correct]
