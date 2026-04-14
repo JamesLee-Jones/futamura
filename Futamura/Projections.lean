@@ -94,6 +94,7 @@ theorem projection2_agrees_with_1 {I O : Type}
   simp
   rw [← mix.correct]
 
+/-- Given an interpreter, `projection2` and `projection3` yield the same compiler. -/
 theorem projection3_agrees_with_2 {I O : Type}
     (S T : Lang)
     (mix : Mix T)
