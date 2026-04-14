@@ -17,12 +17,20 @@ structure Interp {I O : Type} (S T : Lang) where
   /-- Running the interpreter yields the same result as evaluating the source program directly. -/
   correct: ∀ (p : S.Prog I O) (x: I), S.eval p x = T.eval prog (p, x)
 
+/-- The raw program type of an interpreter for `S` in `T`. -/
+abbrev Interp.ProgType (I O : Type) (S T : Lang) :=
+  T.Prog (S.Prog I O × I) O
+
 /-- A compiler from `S` to `T` written in `T`: a `T`-program that takes a source program from `I` to `O` and returns a `T` program from `I` to `O`. -/
 structure Compiler {I O : Type} (S T : Lang) where
   /-- The compiler program.-/
   prog: T.Prog (S.Prog I O) (T.Prog I O)
   /-- Compiling and running a program yileds the same result as evaluating the source program directly. -/
   correct: ∀ (p : S.Prog I O) (x : I), S.eval p x = T.eval (T.eval prog p) x
+
+/-- The raw program type of a compiler from `S` to `T`. -/
+abbrev Compiler.ProgType (I O : Type) (S T : Lang) :=
+  T.Prog (S.Prog I O) (T.Prog I O)
 
 /-- A specializer (partial evaluator) for `T`: a `T`-program that takes a program expecting a static-dynamic pair and a static input, and produces a residual program over just the dynamic input. -/
 structure Mix (T : Lang) where
@@ -58,3 +66,22 @@ def projection2 {I O : Type}
     rw [← mix.correct]
     rw [← mix.correct]
     rw [← Interp.correct]
+
+/-- Third Futamura projection: specializing `mix` on `mix` to yields a compiler generator from any language to the implementaion language of `mix`. -/
+def projection3 {I O : Type}
+    (S T : Lang)
+    (mix : Mix T)
+    : T.Prog (Interp.ProgType I O S T) (Compiler.ProgType I O S T) :=
+  T.eval mix.prog (mix.prog, mix.prog)
+
+/-- Given an interpreter, the generated compiler behaves identically to the interpreter for all input programs and program inputs. -/
+theorem projection3_correct {I O : Type}
+    (S T : Lang)
+    (mix : Mix T)
+    (interp : Interp.ProgType I O S T)
+    (p : S.Prog I O) (x : I) :
+    T.eval interp (p, x) = T.eval (T.eval (T.eval (projection3 S T mix) interp) p) x := by
+  unfold projection3
+  rw [← mix.correct]
+  rw [← mix.correct]
+  rw [← mix.correct]
