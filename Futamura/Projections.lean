@@ -46,3 +46,16 @@ theorem projection1_correct {I O : Type}
   unfold projection1
   rw [← Mix.correct]
   rw [← Interp.correct]
+
+/-- Second Futamura projection: specializing `mix` to an interpreter yields a compiler. -/
+def projection2 {I O : Type}
+    (S T : Lang)
+    (mix_1 : @Mix (S.Prog I O) I O T)
+    (mix_2 : @Mix (T.Prog (S.Prog I O × I) O) (S.Prog I O) (T.Prog I O) T)
+    (interp : @Interp I O S T) : @Compiler I O S T where
+  prog := T.eval mix_2.prog (mix_1.prog, interp.prog)
+  correct := by
+    intro p x
+    rw [← mix_2.correct]
+    rw [← mix_1.correct]
+    rw [← Interp.correct]
